@@ -1,0 +1,8 @@
+/* 1. 强制所有父级容器撑满屏幕 */
+html, body, #app {
+  height: 100%; /* 使用视口高度 */
+  width: 100%;  /* 使用视口宽度 */
+  margin: 0;
+  padding: 0;
+  overflow: hidden; /* 播放器通常不需要原生滚动条 */
+}

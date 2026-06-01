@@ -1,0 +1,13 @@
+{
+    "PlayerConf":{
+        "autoplay": false,
+        "theme": "#29ADFF",
+        "volume": 0.5,
+        "autoSize": true,
+        "screenshot": true,
+        "setting": true,
+        "hotkey": true,
+        "backdrop": false,
+        "fullscreen": true
+    }
+}
