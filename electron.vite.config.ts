@@ -17,15 +17,15 @@ export default defineConfig({
   main: {
     build: {
       rollupOptions: {
-        // 手动指定外部依赖，这是最稳妥的做法
-        external: ['electron-store']
+        // 不 external electron-store，让 Rollup 将其打包进主进程，以兼容 ESM 格式
+        // external: ['electron-store']
       }
     }
   },
   preload: {
     build: {
       rollupOptions: {
-        external: ['electron-store']
+        // external: ['electron-store']
       }
     }
   },
