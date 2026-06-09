@@ -1,23 +1,23 @@
-<script setup>
+<script setup lang="ts">
   import { ref } from 'vue'
   import { CloseBold, Minus } from '@element-plus/icons-vue'
-  import {minusWindow,maxWindow, closeWindow}  from '@renderer/api/window.ts'
+  import {minusWindow,maxWindow, closeWindow}  from '@renderer/api/window'
 
  //最小化窗口 
-  const handleMinus = () => {
+  const handleMinus = (): void => {
     minusWindow()
   }
   //最大化窗口
   const isMaximized = ref(false)
 
-  const handleMax = () => {
+  const handleMax = (): void => {
     console.log('最大化窗口')
     maxWindow()
     isMaximized.value = !isMaximized.value
     console.log('isMaximized.value', isMaximized.value)
   }
   //关闭窗口
-  const handleClose = () => {
+  const handleClose = (): void => {
     console.log('关闭窗口')
     closeWindow()
   }
@@ -38,7 +38,7 @@
                     <IconFluentMaximize-48-filled  v-if="!isMaximized" />
                     <IconClarityWindow-restore-line v-else />
                 </el-icon>
-                <el-icon :size="30"style="-webkit-app-region: no-drag" @click="handleClose"><CloseBold/></el-icon>
+                <el-icon :size="30" style="-webkit-app-region: no-drag" @click="handleClose"><CloseBold/></el-icon>
             </div>
         </el-col>
   </el-row>

@@ -3,14 +3,25 @@ import { WindowController } from '../Window/windowController'
 import { TrayClass } from '../Tray/trayClass'
 import { initStore } from '../electronStore/db'; //引入store
 
+let initialized = false
+let tray: TrayClass | null = null
+
 //初始化管理器
-export const initAll = (window: BrowserWindow) => {
+export const initAll = (window: BrowserWindow): void => {
     //1. 初始化 Store ,核心存储服务
-    initStore()
+    if (!initialized) {
+        initStore()
+        initialized = true
+    }
 
     //2.窗口与托盘，直接初始化
     new WindowController(window).init()
-    new TrayClass(window).initTray()
+    if (tray) {
+        tray.updateWindow(window)
+    } else {
+        tray = new TrayClass(window)
+        tray.initTray()
+    }
 }
 
 // export class initManager {

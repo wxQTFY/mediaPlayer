@@ -1,8 +1,24 @@
-import { ElectronAPI } from '@electron-toolkit/preload'
+import type { VideoItem } from '../common/types'
 
 declare global {
   interface Window {
-    electron: ElectronAPI
-    api: unknown
+    api: {
+      app: {
+        versions: NodeJS.ProcessVersions
+      }
+      window: {
+        minimize: () => void
+        maximize: () => void
+        close: () => void
+      }
+      media: {
+        openFiles: (currentList: VideoItem[]) => Promise<VideoItem[]>
+        prepareStream: (id: string, duration: number) => Promise<{ url: string }>
+      }
+      store: {
+        getVideoList: () => Promise<VideoItem[]>
+        setVideoList: (videoList: VideoItem[]) => Promise<void>
+      }
+    }
   }
 }

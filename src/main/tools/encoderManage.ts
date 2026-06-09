@@ -14,12 +14,13 @@ interface encoderType {
 }
 
 export const encoderSelect=  ():Promise<encoderType> =>{
-    return new Promise((resolve,reject)=>{
+    return new Promise((resolve)=>{
         ffmpeg.getAvailableEncoders((err, encoders) => {
             let bestEncoder: string = 'libx264';
             let isGpu: boolean = false;
             if (err || !encoders) {
                 console.log('无法获取编码器,默认使用CPU(libx264)');
+                resolve({ bestEncoder, isGpu });
                 return;
             }
             //优先级顺序：NVIDIA -> AMD-> Intel -> CPU

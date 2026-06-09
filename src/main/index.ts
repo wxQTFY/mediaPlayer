@@ -3,8 +3,12 @@ import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import './controller/electronStore/localStore' // 引入 Store 模块，确保它在 app ready 之前被加载和初始化
-// 必须有这一行，或者 fork 这个文件
-import './controller/server/server'; // 假设你的后端代码在 server.ts
+import {
+  registerMediaServerIpc,
+  startMediaServer,
+  stopMediaServer
+} from './controller/server/server'
+import { stopAllTranscodes } from './controller/transCodeManage/transCodeManage'
 
 // import { WindowController } from './controller/Window/windowController'
 
@@ -16,7 +20,6 @@ import { windowConfig } from './config/conf.json'
 import { fileDialogController } from './controller/fileDialog/fileDialogController'
 
 import { registerLocalFileProtocol, registerLocalFileProtocolHandler } from './tools/localFileProtocol'
-import { getGpuInfo } from './tools/getGpuInfo'
 
 
 
@@ -37,7 +40,7 @@ function createWindow(): void {
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
-      sandbox: false,
+      sandbox: true,
       contextIsolation: true, //核心配置，开启上下文隔离
       nodeIntegration: false, //核心配置，禁止在渲染进程使用 Node.js API
     }
@@ -64,8 +67,18 @@ function createWindow(): void {
 
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
-    shell.openExternal(details.url)
+    try {
+      const url = new URL(details.url)
+      if (url.protocol === 'https:' || url.protocol === 'http:') {
+        void shell.openExternal(details.url)
+      }
+    } catch {
+      // Malformed URLs are denied below.
+    }
     return { action: 'deny' }
+  })
+  mainWindow.webContents.on('will-navigate', (event, url) => {
+    if (url !== mainWindow.webContents.getURL()) event.preventDefault()
   })
 
   // HMR for renderer base on electron-vite cli.
@@ -76,13 +89,13 @@ function createWindow(): void {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }
 
-  mainWindow.webContents.openDevTools({ mode: 'bottom' })
+  if (is.dev) mainWindow.webContents.openDevTools({ mode: 'bottom' })
 }
 
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   // Set app user model id for windows
   electronApp.setAppUserModelId('com.electron')
   registerLocalFileProtocolHandler() // 注册协议处理器，确保在 app ready 之后调用
@@ -98,6 +111,8 @@ app.whenReady().then(() => {
   // IPC test
   ipcMain.on('ping', () => console.log('pong'))
   fileDialogController() // 初始化文件对话框控制器，设置相关监听
+  registerMediaServerIpc()
+  await startMediaServer()
   createWindow()
 
   app.on('activate', function () {
@@ -114,6 +129,11 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit()
   }
+})
+
+app.on('before-quit', () => {
+  stopAllTranscodes()
+  stopMediaServer()
 })
 
 // In this file you can include the rest of your app's specific main process

@@ -8,6 +8,10 @@ export class TrayClass {
         this.window = window;
     } 
 
+    public updateWindow(window: BrowserWindow): void {
+        this.window = window;
+    }
+
     public initTray(): void {
         const imgPath = path.join(app.getAppPath(), 'resources/icon.png'); // 替换为你的图标路径
         const iconPath = nativeImage.createFromPath(imgPath); // 替换为你的图标路径
@@ -29,5 +33,4 @@ export class TrayClass {
         
     }
 }
-
 

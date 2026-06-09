@@ -4,7 +4,7 @@ import { type GPUInfo } from '../../common/types';
 
 
 
-export const getGpuInfo = async () => {
+export const getGpuInfo = async (): Promise<void> => {
     const gpuInfo = await app.getGPUInfo('complete') as GPUInfo;
     // 打印显卡型号和驱动版本
     console.log('显卡型号:', gpuInfo);
@@ -16,4 +16,3 @@ export const getGpuInfo = async () => {
     // 打印详细的辅助信息（如驱动版本）
     console.log('驱动版本:', gpuInfo.auxAttributes?.driverVersion);
 }
-

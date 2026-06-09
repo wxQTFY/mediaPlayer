@@ -1,5 +1,5 @@
 <script setup lang="ts">
-  import { inject,computed } from 'vue'
+  import { inject,computed, type Ref } from 'vue'
   import { ArrowRightBold, ArrowLeftBold,Plus,Close,Sort, Delete} from '@element-plus/icons-vue'
   import thumbnail from '@renderer/assets/thumbnail.png'
   import { ElText } from 'element-plus'
@@ -13,19 +13,24 @@
 
   const list = computed(() => playerStore.sortedVideoList) // 获取视频列表
 
-  const slider = inject<any>('sidebarContext')
-  const handToSliderBar = () => {
+  interface SidebarContext {
+    isCollapse: Ref<boolean>
+    toggleCollapse: () => void
+  }
+  const slider = inject<SidebarContext>('sidebarContext')
+  if (!slider) throw new Error('sidebarContext is required')
+  const handToSliderBar = (): void => {
     console.log('点击了侧边栏切换按钮，当前状态:', slider.isCollapse.value);
     slider.toggleCollapse()
   }
 
   //删除单个视频
-  const handleDeleteItem = (id: string) => {
+  const handleDeleteItem = (id: string): void => {
     playerStore.removeVideoById(id)
   }
 
   //切换视频
-  const handleSwitchVideo = (id: string) => {
+  const handleSwitchVideo = (id: string): void => {
     // console.log('双击了视频项，id:', id);
     playerStore.switchVideoInList(id)
     if (router.currentRoute.value.path !== '/player') {
@@ -33,7 +38,7 @@
     }
   }
 //删除全部视频
-  const handleDeleteAllVideos = () => {
+  const handleDeleteAllVideos = (): void => {
     playerStore.deleteAllVideos()
   }
 

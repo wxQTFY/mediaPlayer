@@ -1,6 +1,7 @@
 import ffmpeg from 'fluent-ffmpeg';
 import ffmpegPath from 'ffmpeg-static';
 import ffporbePath from 'ffprobe-static';
+import type { VideoItem } from '../../common/types';
 // import path from 'path';
 
 /**
@@ -12,7 +13,7 @@ ffmpeg.setFfmpegPath(ffmpegPath!);
 ffmpeg.setFfprobePath(ffporbePath.path); 
 
 //分析单个视频文件的元数据
-export const analyzeSingleVideo = async (filePath:string): Promise<any> => {
+export const analyzeSingleVideo = async (filePath:string): Promise<NonNullable<VideoItem['meta']>> => {
     return new Promise((resolve, reject) => {
         ffmpeg.ffprobe(filePath, (err, metadata) => {
             if (err) return reject(err);
@@ -24,10 +25,12 @@ export const analyzeSingleVideo = async (filePath:string): Promise<any> => {
             // const isNative = vCodec === 'h264' && ext === '.mp4'; // 判断是否为原生格式
             resolve({
                 vCodec,
-                duration: metadata.format.duration,
-                bite_rate: metadata.format.bit_rate,
+                duration: metadata.format.duration ?? 0,
+                resolution: videoStream?.width && videoStream?.height
+                    ? `${videoStream.width}x${videoStream.height}`
+                    : undefined,
                 size: metadata.format.size,
             });
         });
     });
-}   
+}

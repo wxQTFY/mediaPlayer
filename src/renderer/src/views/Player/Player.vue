@@ -1,5 +1,5 @@
 <script setup lang="ts">
-  import { ref,computed,watch } from 'vue'
+  import { computed,watch } from 'vue'
   import ArtPlayer from '@renderer/components/Artplayer/ArtPlayer.vue'
 
   import { usePlayerStore } from '@renderer/store/playerStory'
@@ -24,7 +24,7 @@
   )
 
   // const videoName = 
-  const goBack = () => {
+  const goBack = (): void => {
     playerStore.clearPlay()
     router.push('/')
   }

@@ -1,13 +1,17 @@
 import express from 'express';
 import ffmpeg from 'fluent-ffmpeg';
 import ffmpegPath from 'ffmpeg-static';
+import { ipcMain } from 'electron';
+import type { Server } from 'http';
 
 import { hlsTranscode } from '../transCodeManage/transcode';
 
 import { CONFIG_DIR,CONFIG_CONST } from '../../config/config'
-import { SERVER_CONFIG } from '../../../conf/conf.json'
 
 import { setIdleTimer } from '../transCodeManage/transCodeManage';
+import { getAuthorizedMediaPath, isValidMediaId } from '../../tools/mediaAccess';
+import { assertTrustedIpcSender } from '../../tools/ipcSecurity';
+import path from 'path';
 console.log('--- 后端服务启动检查 ---');
 // import cors from 'cors';
 // app.use(cors()); // 必须在所有路由之前
@@ -16,33 +20,46 @@ console.log('--- 后端服务启动检查 ---');
 ffmpeg.setFfmpegPath(ffmpegPath!); // 设置 FFprobe 路径
 
 const app = express();
+let server: Server | null = null;
+let serverUrl = '';
 // 假设你使用 Express
-app.use('/temp_hls', express.static(CONFIG_DIR.TEMP_HLS_DIR));
+app.get('/temp_hls/:id/:file', (req, res) => {
+    const { id, file } = req.params;
+    if (
+        !isValidMediaId(id) ||
+        !getAuthorizedMediaPath(id) ||
+        !/^(index\.m3u8|seg_\d+\.ts)$/.test(file)
+    ) {
+        res.sendStatus(403);
+        return;
+    }
+    setIdleTimer(id, 300000);
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.sendFile(path.join(CONFIG_DIR.TEMP_HLS_DIR, id, file));
+});
 
 // let ffmpegCommand: ffmpeg.FfmpegCommand | null = null;
 
-app.get('/video', async (req, res) => {
-
-    const { realPath,id,duration} = req.query;
-    try{
-        await hlsTranscode(realPath as string,id as string ,duration as string,req);
-        // 只有转码启动并生成了 m3u8，才会执行到这里
-        res.json({ 
-            code: 200,
-            status: 'success',
-            url: `${SERVER_CONFIG.FRONTEND_URL}/temp_hls/${id}/${CONFIG_CONST.INDEX_EXT}`
-        });
-        // --- 5. 被动销毁：启动闲置计时器 ---
-        setIdleTimer(id as string, 300000); // 5 分钟后销毁
-    }catch(err){
-        res.json({ 
-            code: 400,
-            status: 'error',
-            message: '无法启动视频流'
-        });
+export const registerMediaServerIpc = (): void => {
+    ipcMain.handle('media:prepareStream', async (_event, id: string, duration: number) => {
+    assertTrustedIpcSender(_event);
+    if (!isValidMediaId(id)) throw new Error('无效的视频 ID');
+    const realPath = getAuthorizedMediaPath(id);
+    const parsedDuration = Number(duration);
+    if (!realPath || !Number.isFinite(parsedDuration) || parsedDuration <= 0 || parsedDuration > 86400) {
+        throw new Error('无效的视频参数');
     }
-    
-});
+    try{
+        await hlsTranscode(realPath, id, parsedDuration);
+        if (!serverUrl) throw new Error('媒体服务尚未启动');
+        const url = `${serverUrl}/temp_hls/${id}/${CONFIG_CONST.INDEX_EXT}`;
+        setIdleTimer(id as string, 300000); // 5 分钟后销毁
+        return { url };
+    }catch{
+        throw new Error('无法启动视频流');
+    }
+    });
+}
 
 // function getGpuCodec(): string{
 //     // 根据系统环境选择合适的 GPU 编码器
@@ -55,4 +72,28 @@ app.get('/video', async (req, res) => {
 //     }
 // }
 
-app.listen(9999, () => console.log('Backend running on http://localhost:9999'));
+export const startMediaServer = (): Promise<void> => {
+    if (server) return Promise.resolve();
+    return new Promise((resolve, reject) => {
+        server = app.listen(0, '127.0.0.1', () => {
+            const address = server?.address();
+            if (!address || typeof address === 'string') {
+                reject(new Error('无法获取媒体服务地址'));
+                return;
+            }
+            serverUrl = `http://127.0.0.1:${address.port}`;
+            console.log(`Backend running on ${serverUrl}`);
+            resolve();
+        });
+        server.on('error', (error) => {
+            console.error('媒体服务启动失败:', error);
+            reject(error);
+        });
+    });
+}
+
+export const stopMediaServer = (): void => {
+    server?.close();
+    server = null;
+    serverUrl = '';
+}

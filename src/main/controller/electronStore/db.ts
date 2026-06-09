@@ -1,11 +1,8 @@
 import Store from 'electron-store';
+import type { VideoItem } from '../../../common/types';
 
-const schema = {
-  // 在这里定义你的数据结构和默认值
-  videoList: {
-    type: 'array',
-    default: []
-  }
+interface StoreData {
+  videoList: VideoItem[]
 }
 
 // console.log( Store); // 输出数据文件的路径，方便调试
@@ -26,15 +23,13 @@ const schema = {
 
 // src/main/db.ts
 
-// 关键点：动态获取构造函数
-const _Store = (Store as any).default || Store
-
-export const store = new _Store({
+export const store = new Store<StoreData>({
   name: 'dbStore', // 存储文件名为 dbStore.json
-  schema
+  defaults: {
+    videoList: []
+  }
 })
 
-export const initStore = () => {
-    console.log('Store 数据文件路径:', store.path); // 输出数据文件的路径，方便调试
-  if (_Store.initRenderer) _Store.initRenderer()
+export const initStore = (): void => {
+  console.log('Store 数据文件路径:', store.path); // 输出数据文件的路径，方便调试
 }

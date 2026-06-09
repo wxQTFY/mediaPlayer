@@ -1,20 +1,29 @@
 //  import Hls from 'hls.js'; // 导入 Hls.js 库
 //  import flvjs from 'flv.js';
 //  import * as dashjs from 'dashjs';
+import type Artplayer from 'artplayer'
 
-import artplayerPluginHlsControl from 'artplayer-plugin-hls-control';
-  import artplayerPluginDashControl from 'artplayer-plugin-dash-control';
+interface Destroyable {
+  destroy: () => void
+}
 
- export const playM3u8 = async (video: HTMLVideoElement, url: string,art: any) => {
+type PlayerAdapter = Artplayer & {
+  hls?: Destroyable
+  flv?: Destroyable
+  dash?: Destroyable
+}
+
+ export const playM3u8 = async (video: HTMLVideoElement, url: string,art: Artplayer): Promise<void> => {
+    const player = art as PlayerAdapter
     const Hls = (await import('hls.js')).default;
   if (Hls.isSupported()) {
-    if(art.hls)
-      art.hls.destroy();
+    if(player.hls)
+      player.hls.destroy();
       const hls = new Hls();
       hls.loadSource(url);
       hls.attachMedia(video);
-      art.hls = hls;
-      art.on('destroy', () => hls.destroy());
+      player.hls = hls;
+      player.on('destroy', () => hls.destroy());
       // artplayerPluginHlsControl({
       //   quality: {
       //     control: true,
@@ -30,17 +39,18 @@ import artplayerPluginHlsControl from 'artplayer-plugin-hls-control';
   }
 }
 
-export const playFlv = async (video: HTMLVideoElement, url: string, art: any) => {
+export const playFlv = async (video: HTMLVideoElement, url: string, art: Artplayer): Promise<void> => {
+  const player = art as PlayerAdapter
   console.log('正在使用 mpegts.js 播放 FLV:', url);
     const flvjs = (await import('flv.js')).default;
   if (flvjs.isSupported()) {
-    if (art.flv)
-      art.flv.destroy()
+    if (player.flv)
+      player.flv.destroy()
     const flv = flvjs.createPlayer({ type: 'flv', url })
     flv.attachMediaElement(video)
     flv.load()
-    art.flv = flv
-    art.on('destroy', () => flv.destroy())
+    player.flv = flv
+    player.on('destroy', () => flv.destroy())
   }
   else {
     art.notice.show = 'Unsupported playback format: flv'
@@ -48,15 +58,16 @@ export const playFlv = async (video: HTMLVideoElement, url: string, art: any) =>
 }
 
 
-export const  playMpd = async (video: HTMLVideoElement, url: string, art: any) => {
+export const playMpd = async (video: HTMLVideoElement, url: string, art: Artplayer): Promise<void> => {
+    const player = art as PlayerAdapter
     const dashjs = (await import('dashjs'));
   if (dashjs.supportsMediaSource()) {
-    if (art.dash)
-      art.dash.destroy()
+    if (player.dash)
+      player.dash.destroy()
       const dash = dashjs.MediaPlayer().create()
       dash.initialize(video, url, art.option.autoplay)
-      art.dash = dash
-      art.on('destroy', () => dash.destroy())
+      player.dash = dash
+      player.on('destroy', () => dash.destroy())
       // artplayerPluginDashControl({
       //   quality: {
       //     control: true,

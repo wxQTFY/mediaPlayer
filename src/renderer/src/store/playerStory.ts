@@ -7,10 +7,6 @@ import router  from '@renderer/router/index'
 import { type VideoItem } from '@common/types';
 import { transCodeUrl } from '@renderer/api/api';
 
-import { Input, UrlSource, ALL_FORMATS }from 'mediabunny';
-
-
-
 export const usePlayerStore = defineStore('player', {
   state: () => ({
     // 在这里定义当前播放视频信息
@@ -52,7 +48,7 @@ export const usePlayerStore = defineStore('player', {
   actions: {
     async initStore() {
        // 初始化播放列表
-       this.videoList = await localStore('get','videoList')
+       this.videoList = (await localStore('get','videoList')) ?? []
       //  this.videoList = await localStore()
     },
 
@@ -174,7 +170,7 @@ export const usePlayerStore = defineStore('player', {
       // 1. 如果是原生支持的 MP4/WebM，尝试用 Mediabunny 预处理（如提取关键帧或检查坏帧）
       if(strategy === 'stream'){
         //后端请求
-        const res = await transCodeUrl(videoToPlay.realPath!,videoToPlay.id,videoToPlay.meta!.duration)
+        const res = await transCodeUrl(videoToPlay.id,videoToPlay.meta!.duration)
         const url = res.url
         console.log('转码后的视频地址',url)
         

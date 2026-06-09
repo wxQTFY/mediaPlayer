@@ -24,6 +24,7 @@ export interface VideoItem {
   };
   
   isNew?: boolean;       // 交互辅助：标记是否为本次新添加
+  errorMsg?: string;     // 导入或探测失败时的错误信息
 }
 
 export interface GPUInfo {

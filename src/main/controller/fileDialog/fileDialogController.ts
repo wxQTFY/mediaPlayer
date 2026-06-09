@@ -10,6 +10,8 @@ import { type VideoItem } from '../../../common/types';
 
 // import { CONFIG_CONST } from "../../config/config";
 import crypto from 'crypto';
+import { authorizeMedia } from '../../tools/mediaAccess';
+import { assertTrustedIpcSender } from '../../tools/ipcSecurity';
 
 const VIDEO_EXTS = ['.mp4', '.mkv', '.avi', '.flv', '.mov', '.wmv','.rmvb','.mpd','.m3u8','.m4v','.webm']
 const TRANSCODE_EXTS = ['.avi','.mov', '.wmv','.rmvb','.m4v']
@@ -19,8 +21,9 @@ const TRANSCODE_EXTS = ['.avi','.mov', '.wmv','.rmvb','.m4v']
 // 定义错误状态下的播放策略和模式
 // const ERROR_STRATEGY = 'none' as 'none';
 // const ERROR_MODE = 'none' as 'none';
-export const fileDialogController = async () => {
+export const fileDialogController = (): void => {
     ipcMain.handle('dialog:openFile', async (_event, currentList: VideoItem[]):Promise<VideoItem[]> => {
+        assertTrustedIpcSender(_event)
         // console.log('videoList',currentList)
         const { canceled, filePaths } = await dialog.showOpenDialog({
             title: '选择视频文件',
@@ -52,7 +55,9 @@ const formatPath = (absolutePath: string, strategy:string,protocol: string = 'lo
         // 使用正则 /\\/g 确保全局替换  
         let normalizedPath = absolutePath.replace(/\\/g, '/');
         // 2. 确保路径开头没有重复的斜杠（如果是从某些库获取的路径可能带盘符前缀）
-        normalizedPath = normalizedPath.startsWith('/')? normalizedPath.substring(1):normalizedPath;
+        if (process.platform === 'win32') {
+            normalizedPath = normalizedPath.startsWith('/') ? normalizedPath.substring(1) : normalizedPath;
+        }
         //拼接协议头
         url = `${protocol}://${normalizedPath}`;
     }else{
@@ -62,14 +67,14 @@ const formatPath = (absolutePath: string, strategy:string,protocol: string = 'lo
 }  
 
 //遍历所有选择的文件路径，根据探测结果返回加工后的最终格式
-const mapAndFormatFfmpegResult = async (filePaths:string[], currentList: VideoItem[]) => {
+const mapAndFormatFfmpegResult = async (filePaths:string[], currentList: VideoItem[]): Promise<VideoItem[]> => {
     return Promise.all(filePaths.map(async filePath => {
         // let mode:'copy'| 'transcode' | 'direct' | 'ERROR_MODE';
         let strategy:'direct' | 'stream' | 'ERROR_STRATEGY';
-     // 1. 生成基于路径的固定 ID (这是解决你之前转码目录重复的关键)
-        const fixedId = crypto.createHash('md5').update(filePath).digest('hex')
+        // 1. 使用不可预测 ID，避免通过已知本地路径推测 HLS 缓存地址
+        const mediaId = crypto.randomUUID()
         // 2. 查重判定
-        const existedVideo = currentList.find(v => v.id === fixedId || v.realPath === filePath);
+        const existedVideo = currentList.find(v => v.realPath === filePath);
         if(existedVideo){
             // console.log('existedVideo',existedVideo)
             return existedVideo;
@@ -87,8 +92,9 @@ const mapAndFormatFfmpegResult = async (filePaths:string[], currentList: VideoIt
                 strategy = 'direct';
                 playerUrl = formatPath(filePath, strategy)
             }
+            authorizeMedia(mediaId, filePath)
             return {
-                id: fixedId,
+                id: mediaId,
                 date: Date.now(), // 当前时间戳
                 success: true,
                 videoName: path.basename(filePath), // 从路径中提取文件名
@@ -101,20 +107,19 @@ const mapAndFormatFfmpegResult = async (filePaths:string[], currentList: VideoIt
                     ...metadata
                 }
              }
-        }catch(err){
+        }catch{
 
            return {
-                id: fixedId,
+                id: mediaId,
                 success: false,
                 date: Date.now(), // 当前时间戳
                 videoPath: '', // 由于出错无法生成播放路径，置空
                 videoName: path.basename(filePath), // 从路径中提取文件名
                 errorMsg: "文件损坏或格式不支持",
-                readPath: filePath, // 原始路径，供后端读取使用
+                realPath: filePath, // 原始路径，供后端读取使用
            } 
         }
        
     }))
 
 }
- 

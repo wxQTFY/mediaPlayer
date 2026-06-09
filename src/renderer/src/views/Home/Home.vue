@@ -9,7 +9,7 @@
     
 
   const isCollapse = ref(false)
-  const toggleCollapse = () => {
+  const toggleCollapse = (): void => {
     isCollapse.value = !isCollapse.value
     console.log('侧边栏状态已切换，当前状态:', isCollapse.value);
   }
@@ -19,7 +19,7 @@
   })
 
  </script>
- 
+
 <template>
   <div class="common-layout w-full h-full" >
     <el-container class="h-full">
@@ -42,7 +42,7 @@
     </el-container>
   </div>
 </template>
- 
+
  <style scoped lang="scss">
   .playerHeader{
       /* 核心代码：允许拖拽窗口 */
@@ -56,4 +56,3 @@
     padding: 0;
   }
  </style>
- 

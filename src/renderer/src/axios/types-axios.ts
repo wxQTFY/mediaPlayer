@@ -11,7 +11,7 @@ export interface AxiosConfig extends AxiosRequestConfig {
 }
 
 /** 统一后端返回格式 */
-export interface ResponseData<T = any> {
+export interface ResponseData<T = unknown> {
   code: number;
   message: string;
   data: T;
@@ -19,20 +19,14 @@ export interface ResponseData<T = any> {
   timestamp: number;
 }
 /** 请求参数 */
-export interface RequestConfig<T = any> {
-    url: string;
-    method?: 'get'|'post'|'put'|'delete'
-    data?: any;
-    params?: any;
-    timeout?: number;
-}
+export type RequestConfig = AxiosConfig
 
 
 /** 错误响应结构 */
 export interface ErrorResponse {
   code: number;
   message: string;
-  data?: any;
+  data?: unknown;
   config?: AxiosConfig;
 }
 
@@ -42,4 +36,4 @@ export interface InternalConfig extends AxiosConfig {
 }
 
 // 并发控制器任务类型
-export type RequestFn<T = any> = () => Promise<T>;
+export type RequestFn<T = unknown> = () => Promise<T>;

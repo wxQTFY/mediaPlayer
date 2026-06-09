@@ -1,4 +1,5 @@
 import { ipcMain, BrowserWindow } from "electron";
+import { assertTrustedIpcSender } from '../../tools/ipcSecurity';
 
 /**
  * 窗口控制器类，用于管理窗口的各种操作和事件监听
@@ -16,11 +17,16 @@ export class WindowController {
 
   //初始化所有监听器
   public init():void {
-      ipcMain.on("window-minimize", () => {
+      ipcMain.removeAllListeners("window-minimize");
+      ipcMain.removeAllListeners("window-maximize");
+      ipcMain.removeAllListeners("window-close");
+      ipcMain.on("window-minimize", (event) => {
+        assertTrustedIpcSender(event);
         this.window.minimize();
       })
 
-      ipcMain.on("window-maximize", () => {
+      ipcMain.on("window-maximize", (event) => {
+        assertTrustedIpcSender(event);
         if (this.window.isMaximized()) {
             this.window.unmaximize();
         } else {
@@ -28,7 +34,8 @@ export class WindowController {
         }
       })
 
-      ipcMain.on("window-close", () => {
+      ipcMain.on("window-close", (event) => {
+        assertTrustedIpcSender(event);
         this.window.hide();
       })
   }
