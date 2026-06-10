@@ -3,6 +3,7 @@ import {
   canFallbackToTranscode,
   getLocalPlaybackStrategy,
   getNativeMimeType,
+  isSupportedLocalVideo,
   VIDEO_EXTS
 } from '../src/common/playbackStrategy'
 
@@ -16,7 +17,6 @@ describe('local playback strategy', () => {
   it('transcodes containers or codecs that Chromium cannot reliably play', () => {
     expect(getLocalPlaybackStrategy('/videos/video.mpg', 'mpeg2video')).toBe('stream')
     expect(getLocalPlaybackStrategy('/videos/video.3gp', 'h263')).toBe('stream')
-    expect(getLocalPlaybackStrategy('/videos/video.swf', 'flv1')).toBe('stream')
   })
 
   it('provides runtime MIME checks and fallback eligibility for native candidates', () => {
@@ -33,6 +33,7 @@ describe('local playback strategy', () => {
   })
 
   it('accepts the requested legacy video extensions', () => {
-    expect(VIDEO_EXTS).toEqual(expect.arrayContaining(['.ogg', '.ogv', '.swf', '.mpg', '.mpeg', '.3gp', '.3pg']))
+    expect(VIDEO_EXTS).toEqual(expect.arrayContaining(['.ogg', '.ogv', '.mpg', '.mpeg', '.3gp', '.3pg']))
+    expect(isSupportedLocalVideo('/videos/video.swf')).toBe(false)
   })
 })

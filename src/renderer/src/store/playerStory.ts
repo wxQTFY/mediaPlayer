@@ -8,7 +8,8 @@ import { localMediaUrl, removeTranscodeCaches, transCodeUrl } from '@renderer/ap
 import {
   canFallbackToTranscode,
   getLocalPlaybackStrategy,
-  getNativeMimeType
+  getNativeMimeType,
+  isSupportedLocalVideo
 } from '@common/playbackStrategy';
 
 export const usePlayerStore = defineStore('player', {
@@ -52,7 +53,21 @@ export const usePlayerStore = defineStore('player', {
   actions: {
     async initStore() {
        // 初始化播放列表
-       this.videoList = (await localStore('get','videoList')) ?? []
+       const storedVideoList = (await localStore('get','videoList')) ?? []
+       const unsupportedLocalVideos = storedVideoList.filter(
+         video => video.realPath &&
+           !/^https?:\/\//i.test(video.realPath) &&
+           !isSupportedLocalVideo(video.realPath)
+       )
+       this.videoList = storedVideoList.filter(video => !unsupportedLocalVideos.includes(video))
+       if (unsupportedLocalVideos.length > 0) {
+         try {
+           await removeTranscodeCaches(unsupportedLocalVideos.map(video => video.id))
+         } catch (error) {
+           console.error('清理不支持格式的转码缓存失败:', error)
+         }
+         this.updateToDdisk()
+       }
       //  this.videoList = await localStore()
     },
 
@@ -194,6 +209,14 @@ export const usePlayerStore = defineStore('player', {
       // 1. 深度拷贝，避免直接修改列表中的原始对象
       if(!video.success ){
         console.error('无法播放视频，视频状态不正确');
+        return
+      }
+      if (
+        video.realPath &&
+        !/^https?:\/\//i.test(video.realPath) &&
+        !isSupportedLocalVideo(video.realPath)
+      ) {
+        console.error('无法播放不支持的本地视频格式')
         return
       }
       const videoToPlay = JSON.parse(JSON.stringify(video)) as VideoItem;
