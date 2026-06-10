@@ -1,8 +1,7 @@
 import { defineStore } from 'pinia';
 // import {PlayerConf} from '@renderer/config/playerConf.json';
 import { toRaw } from 'vue';
-import { localStore } from '@renderer/api/media';
-import { openLocalFile } from '@renderer/api/media';
+import { importDroppedFiles, localStore, openLocalFile } from '@renderer/api/media';
 import router  from '@renderer/router/index'
 import { type VideoItem } from '@common/types';
 import { localMediaUrl, removeTranscodeCaches, transCodeUrl } from '@renderer/api/api';
@@ -72,6 +71,22 @@ export const usePlayerStore = defineStore('player', {
       //     router.push('/player')
       //   }
       // }
+    },
+
+    async handleDroppedFiles(files: File[]) {
+      try {
+        const items = await importDroppedFiles(files, toRaw(this.videoList))
+        if (items.length === 0) return
+        this.addToVideoList(items)
+        const firstPlayableItem = items.find(item => item.success)
+        if (!firstPlayableItem) return
+        await this.playVideo(firstPlayableItem)
+        if (router.currentRoute.value.path !== '/player') {
+          await router.push('/player')
+        }
+      } catch (error) {
+        console.error('拖拽导入视频失败:', error)
+      }
     },
 //处理打开URL的逻辑
     async handleOpenUrl(url: string) {

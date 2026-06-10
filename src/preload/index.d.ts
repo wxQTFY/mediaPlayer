@@ -13,6 +13,8 @@ declare global {
       }
       media: {
         openFiles: (currentList: VideoItem[]) => Promise<VideoItem[]>
+        getPathForFile: (file: File) => string
+        importDroppedFiles: (filePaths: string[], currentList: VideoItem[]) => Promise<VideoItem[]>
         prepareFile: (id: string) => Promise<{ url: string }>
         prepareStream: (id: string, duration: number) => Promise<{ url: string }>
         removeTranscodeCaches: (ids: string[]) => Promise<void>

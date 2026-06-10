@@ -7,6 +7,16 @@ export const openLocalFile = async (videoList: VideoItem[]):Promise<VideoItem[]>
     return filePaths;
 }
 
+export const importDroppedFiles = async (
+    files: File[],
+    videoList: VideoItem[]
+): Promise<VideoItem[]> => {
+    const filePaths = files
+        .map(file => window.api.media.getPathForFile(file))
+        .filter(Boolean)
+    return await window.api.media.importDroppedFiles(filePaths, toRaw(videoList))
+}
+
 // export const localStore = async (key: string): Promise<any> => {
 //     console.log('获取本地存储数据');
 //     return await window.electron.ipcRenderer.invoke('store:get', key);

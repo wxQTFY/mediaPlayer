@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from 'electron'
+import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import type { VideoItem } from '../common/types'
 
 // Custom APIs for renderer
@@ -14,6 +14,9 @@ const api = {
   media: {
     openFiles: (currentList: VideoItem[]): Promise<VideoItem[]> =>
       ipcRenderer.invoke('dialog:openFile', currentList),
+    getPathForFile: (file: File): string => webUtils.getPathForFile(file),
+    importDroppedFiles: (filePaths: string[], currentList: VideoItem[]): Promise<VideoItem[]> =>
+      ipcRenderer.invoke('dialog:importDroppedFiles', filePaths, currentList),
     prepareFile: (id: string): Promise<{ url: string }> =>
       ipcRenderer.invoke('media:prepareFile', id),
     prepareStream: (id: string, duration: number): Promise<{ url: string }> =>

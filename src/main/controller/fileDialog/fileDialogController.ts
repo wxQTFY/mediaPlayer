@@ -1,4 +1,5 @@
 import { ipcMain,dialog } from "electron";
+import fs from 'fs';
 // import {readdir,stat } from 'fs/promises'
 
 // import iconv from "iconv-lite";
@@ -39,6 +40,26 @@ export const fileDialogController = (): void => {
         
        return  await mapAndFormatFfmpegResult(filePaths, currentList);
     })
+
+    ipcMain.handle(
+        'dialog:importDroppedFiles',
+        async (_event, filePaths: string[], currentList: VideoItem[]): Promise<VideoItem[]> => {
+            assertTrustedIpcSender(_event)
+            if (!Array.isArray(filePaths) || !Array.isArray(currentList)) {
+                throw new Error('无效的拖拽文件参数')
+            }
+            const supportedFiles = filePaths.filter(filePath => {
+                if (typeof filePath !== 'string' || !path.isAbsolute(filePath)) return false
+                if (!VIDEO_EXTS.includes(path.extname(filePath).toLowerCase())) return false
+                try {
+                    return fs.statSync(filePath).isFile()
+                } catch {
+                    return false
+                }
+            })
+            return await mapAndFormatFfmpegResult([...new Set(supportedFiles)], currentList)
+        }
+    )
 }
 
 
