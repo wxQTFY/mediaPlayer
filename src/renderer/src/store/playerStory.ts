@@ -5,7 +5,11 @@ import { importDroppedFiles, localStore, openLocalFile } from '@renderer/api/med
 import router  from '@renderer/router/index'
 import { type VideoItem } from '@common/types';
 import { localMediaUrl, removeTranscodeCaches, transCodeUrl } from '@renderer/api/api';
-import { getLocalPlaybackStrategy } from '@common/playbackStrategy';
+import {
+  canFallbackToTranscode,
+  getLocalPlaybackStrategy,
+  getNativeMimeType
+} from '@common/playbackStrategy';
 
 export const usePlayerStore = defineStore('player', {
   state: () => ({
@@ -199,6 +203,14 @@ export const usePlayerStore = defineStore('player', {
           videoToPlay.realPath,
           videoToPlay.meta?.vCodec
         )
+        const nativeMimeType = getNativeMimeType(videoToPlay.realPath, videoToPlay.meta?.vCodec)
+        if (
+          strategy === 'direct' &&
+          nativeMimeType &&
+          document.createElement('video').canPlayType(nativeMimeType) === ''
+        ) {
+          strategy = 'stream'
+        }
         videoToPlay.playback!.strategy = strategy
       }
 
@@ -224,6 +236,25 @@ export const usePlayerStore = defineStore('player', {
       this.playStatus.isPlaying = true;
       this.playStatus.currentTime = 0;
        
+    },
+
+    async fallbackToTranscode(video: VideoItem) {
+      if (
+        !video.realPath ||
+        /^https?:\/\//i.test(video.realPath) ||
+        video.playback?.strategy === 'stream' ||
+        !canFallbackToTranscode(video.realPath)
+      ) return
+      try {
+        const res = await transCodeUrl(video.id, video.meta?.duration ?? 0)
+        this.currentVideo = {
+          ...video,
+          videoPath: res.url,
+          playback: { strategy: 'stream' }
+        }
+      } catch (error) {
+        console.error('原生播放失败，转码回退失败:', error)
+      }
     },
 
     // 在这里定义你的方法

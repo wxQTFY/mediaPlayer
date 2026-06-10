@@ -38,7 +38,13 @@
       <el-icon size="25" @click="goBack"><ArrowLeftBold /></el-icon>
       <span class="text-xm">{{video?.videoName}}</span>
     </div>
-    <ArtPlayer v-if ="video!.videoPath" :url="video!.videoPath" :key="video!.videoPath" @get-duration="(d)=>playerStore.updateDuration(d,video!)" />
+    <ArtPlayer
+      v-if="video!.videoPath"
+      :url="video!.videoPath"
+      :key="video!.videoPath"
+      @get-duration="(d) => playerStore.updateDuration(d, video!)"
+      @playback-error="playerStore.fallbackToTranscode(video!)"
+    />
   </div>
 </template> 
 

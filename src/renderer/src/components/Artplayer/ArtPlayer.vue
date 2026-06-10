@@ -19,6 +19,7 @@
  // 1. 定义事件：告知父组件时长已更新
   const emit = defineEmits<{
     (e: 'get-duration', duration: number): void;
+    (e: 'playback-error'): void;
   }>();
   // console.log('ArtPlayer组件接收到的URL:', props.url);
   const artRef = ref<HTMLDivElement | null>(null)
@@ -76,9 +77,15 @@
         emit('get-duration', art.duration);
       }
     });
+    art.on('video:loadedmetadata', () => {
+      if (art && art.video.videoWidth === 0 && !isMediaType(props.url, 'm3u8')) {
+        emit('playback-error');
+      }
+    });
     //  console.log('当前播放的url:', props.url);
     art.on('video:error', (err) => {
       console.error('视频渲染失败，请检查媒体编码格式或路径', err);
+      emit('playback-error');
     });
   })
   onUnmounted(() => {
