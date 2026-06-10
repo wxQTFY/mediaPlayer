@@ -11,6 +11,7 @@ import { CONFIG_DIR,CONFIG_CONST } from '../../config/config'
 import { removeTranscodeCache, setIdleTimer } from '../transCodeManage/transCodeManage';
 import { getAuthorizedMediaPath, isValidMediaId } from '../../tools/mediaAccess';
 import { assertTrustedIpcSender } from '../../tools/ipcSecurity';
+import { resolvePackagedBinaryPath } from '../../tools/mediaBinaryPath';
 import { normalizeTranscodeDuration } from '../../../common/transcodeDuration';
 import path from 'path';
 console.log('--- 后端服务启动检查 ---');
@@ -18,7 +19,7 @@ console.log('--- 后端服务启动检查 ---');
 // app.use(cors()); // 必须在所有路由之前
 // 设置 ffmpeg 和 ffprobe 的路径
 // 设置 FFmpeg 路径
-ffmpeg.setFfmpegPath(ffmpegPath!); // 设置 FFprobe 路径
+ffmpeg.setFfmpegPath(resolvePackagedBinaryPath(ffmpegPath!));
 
 const app = express();
 let server: Server | null = null;
@@ -74,7 +75,8 @@ export const registerMediaServerIpc = (): void => {
         const url = `${serverUrl}/temp_hls/${id}/${CONFIG_CONST.INDEX_EXT}`;
         setIdleTimer(id as string, 300000); // 5 分钟后销毁
         return { url };
-    }catch{
+    }catch(error){
+        console.error('无法启动视频流:', error);
         throw new Error('无法启动视频流');
     }
     });

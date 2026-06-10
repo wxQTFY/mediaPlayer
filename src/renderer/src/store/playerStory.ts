@@ -105,7 +105,7 @@ export const usePlayerStore = defineStore('player', {
           await router.push('/player')
         }
       } catch (error) {
-        console.error('拖拽导入视频失败:', error)
+        console.error('拖拽视频处理失败:', error)
       }
     },
 //处理打开URL的逻辑

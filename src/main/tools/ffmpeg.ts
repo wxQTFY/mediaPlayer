@@ -2,6 +2,7 @@ import ffmpeg from 'fluent-ffmpeg';
 import ffmpegPath from 'ffmpeg-static';
 import ffporbePath from 'ffprobe-static';
 import type { VideoItem } from '../../common/types';
+import { resolvePackagedBinaryPath } from './mediaBinaryPath';
 // import path from 'path';
 
 /**
@@ -9,8 +10,8 @@ import type { VideoItem } from '../../common/types';
  */
 
 // 设置 ffmpeg 和 ffprobe 的路径
-ffmpeg.setFfmpegPath(ffmpegPath!);  
-ffmpeg.setFfprobePath(ffporbePath.path); 
+ffmpeg.setFfmpegPath(resolvePackagedBinaryPath(ffmpegPath!));
+ffmpeg.setFfprobePath(resolvePackagedBinaryPath(ffporbePath.path));
 
 //分析单个视频文件的元数据
 export const analyzeSingleVideo = async (filePath:string): Promise<NonNullable<VideoItem['meta']>> => {

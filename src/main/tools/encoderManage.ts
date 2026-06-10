@@ -5,8 +5,9 @@
  */
 import ffmpeg from "fluent-ffmpeg";
 import ffmpegPath from "ffmpeg-static";
+import { resolvePackagedBinaryPath } from './mediaBinaryPath'
 
-ffmpeg.setFfmpegPath(ffmpegPath!); // 设置ffmpeg路径
+ffmpeg.setFfmpegPath(resolvePackagedBinaryPath(ffmpegPath!)); // 设置ffmpeg路径
 
 interface encoderType {
     bestEncoder: string,

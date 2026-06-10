@@ -10,14 +10,29 @@ import path from 'path';
 import { encoderSelect } from '../../tools/encoderManage'
 
 import { CONFIG_DIR } from '../../config/config';
+import { resolvePackagedBinaryPath } from '../../tools/mediaBinaryPath';
 
 import { 
     activeTasks, stopTranscode, clearTimer, 
     clearCacheRemovalRequest, currentActiveId, isCacheRemovalRequested, setCurrentId
 } from './transCodeManage';
 
-ffmpeg.setFfmpegPath(ffmpegPath!); // 设置 FFprobe 路径
+ffmpeg.setFfmpegPath(resolvePackagedBinaryPath(ffmpegPath!));
 const pendingTasks = new Map<string, Promise<void>>();
+
+const hasUsableHlsIndex = (m3u8Path: string): boolean => {
+    if (!fs.existsSync(m3u8Path)) return false
+    try {
+        return fs.readFileSync(m3u8Path, 'utf8').startsWith('#EXTM3U')
+    } catch {
+        return false
+    }
+}
+
+const clearIncompleteOutput = async (outputDir: string, m3u8Path: string): Promise<void> => {
+    if (hasUsableHlsIndex(m3u8Path) || !fs.existsSync(outputDir)) return
+    await fs.promises.rm(outputDir, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 })
+}
 
 // 使用 Map 管理正在运行的命令，方便销毁和防抖
 // const activeTasks = new Map<string, ffmpeg.FfmpegCommand>();
@@ -55,11 +70,12 @@ const prepareHlsTranscode = async (realPath: string,id:string,duration: number):
     }
 
     // 3. 缓存检查：如果 index.m3u8 已存在，无需再次启动 FFmpeg
-    if (fs.existsSync(m3u8Path)) {
+    if (hasUsableHlsIndex(m3u8Path)) {
         return;
     }
 
     // 3. 准备工作
+    await clearIncompleteOutput(outputDir, m3u8Path)
     if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir, { recursive: true });
     const { bestEncoder } = await encoderSelect();
     return startTranscode(realPath, id, duration, outputDir, m3u8Path, bestEncoder)
@@ -67,6 +83,8 @@ const prepareHlsTranscode = async (realPath: string,id:string,duration: number):
             if (bestEncoder === 'libx264' || isCacheRemovalRequested(id)) throw error
             console.warn(`[FFmpeg] ${bestEncoder} 不可用，回退到 CPU 编码`)
             stopTranscode(id)
+            await clearIncompleteOutput(outputDir, m3u8Path)
+            if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir, { recursive: true })
             await startTranscode(realPath, id, duration, outputDir, m3u8Path, 'libx264')
         })
 }
@@ -86,6 +104,7 @@ const startTranscode = (
         '-g 60',               // 关键帧间隔（GOP），建议为帧率的 2-5 倍
         '-keyint_min 60',
         '-sc_threshold 0',
+        '-vf scale=trunc(iw/2)*2:trunc(ih/2)*2',
         ...(encoder === 'h264_nvenc' ? ['-preset p1'] : []),
         ...(encoder === 'libx264' ? ['-preset veryfast'] : [])
     ];
@@ -96,6 +115,8 @@ const startTranscode = (
         '-hls_playlist_type vod',      // 标记为点播(VOD)，解决进度条跳动问题
         '-hls_segment_filename', path.join(outputDir, 'seg_%d.ts'), // 切片命名
         '-hls_flags independent_segments',// 确保每个切片都能独立跳转
+        '-map 0:v:0',
+        '-map 0:a:0?',
         // '-preset superfast',    // 优化：后端转码求快，使用 superfast 预设
     ]   
     ffmpegCommand
@@ -116,9 +137,10 @@ const startTranscode = (
                     reject(error);
                 });
         })
-        .on('error', (err) => {
+        .on('error', (err, stdout, stderr) => {
             console.error('转码失败:', err.message)
-            // console.error('FFmpeg 标准错误输出:', stderr); // 这行是解决问题的金钥匙
+            if (stderr) console.error('FFmpeg 标准错误输出:', stderr)
+            if (stdout) console.error('FFmpeg 标准输出:', stdout)
             activeTasks.delete(id);
             reject(err);
         })
@@ -139,7 +161,7 @@ function waitForM3u8(filePath: string, timeout = 15000): Promise<void> {
     return new Promise((resolve, reject) => {
         const startTime = Date.now();
         const timer = setInterval(() => {
-            if (fs.existsSync(filePath)) {
+            if (hasUsableHlsIndex(filePath)) {
                 clearInterval(timer);
                 resolve();
             } else if (Date.now() - startTime > timeout) {
