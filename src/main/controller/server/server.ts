@@ -11,6 +11,7 @@ import { CONFIG_DIR,CONFIG_CONST } from '../../config/config'
 import { removeTranscodeCache, setIdleTimer } from '../transCodeManage/transCodeManage';
 import { getAuthorizedMediaPath, isValidMediaId } from '../../tools/mediaAccess';
 import { assertTrustedIpcSender } from '../../tools/ipcSecurity';
+import { normalizeTranscodeDuration } from '../../../common/transcodeDuration';
 import path from 'path';
 console.log('--- 后端服务启动检查 ---');
 // import cors from 'cors';
@@ -61,14 +62,12 @@ export const registerMediaServerIpc = (): void => {
         return { url: `${serverUrl}/media/${id}/${encodeURIComponent(path.basename(realPath))}` };
     });
 
-    ipcMain.handle('media:prepareStream', async (_event, id: string, duration: number) => {
+    ipcMain.handle('media:prepareStream', async (_event, id: string, duration?: number) => {
     assertTrustedIpcSender(_event);
     if (!isValidMediaId(id)) throw new Error('无效的视频 ID');
     const realPath = getAuthorizedMediaPath(id);
-    const parsedDuration = Number(duration);
-    if (!realPath || !Number.isFinite(parsedDuration) || parsedDuration < 0 || parsedDuration > 86400) {
-        throw new Error('无效的视频参数');
-    }
+    if (!realPath) throw new Error('无效的视频参数');
+    const parsedDuration = normalizeTranscodeDuration(duration);
     try{
         await hlsTranscode(realPath, id, parsedDuration);
         if (!serverUrl) throw new Error('媒体服务尚未启动');

@@ -218,7 +218,7 @@ export const usePlayerStore = defineStore('player', {
       // 1. 如果是原生支持的 MP4/WebM，尝试用 Mediabunny 预处理（如提取关键帧或检查坏帧）
       if(strategy === 'stream'){
         //后端请求
-        const res = await transCodeUrl(videoToPlay.id,videoToPlay.meta!.duration)
+        const res = await transCodeUrl(videoToPlay.id, videoToPlay.meta?.duration ?? 0)
         const url = res.url
         console.log('转码后的视频地址',url)
         
