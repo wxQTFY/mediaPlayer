@@ -8,7 +8,7 @@ import { hlsTranscode } from '../transCodeManage/transcode';
 
 import { CONFIG_DIR,CONFIG_CONST } from '../../config/config'
 
-import { setIdleTimer } from '../transCodeManage/transCodeManage';
+import { removeTranscodeCache, setIdleTimer } from '../transCodeManage/transCodeManage';
 import { getAuthorizedMediaPath, isValidMediaId } from '../../tools/mediaAccess';
 import { assertTrustedIpcSender } from '../../tools/ipcSecurity';
 import path from 'path';
@@ -78,6 +78,14 @@ export const registerMediaServerIpc = (): void => {
     }catch{
         throw new Error('无法启动视频流');
     }
+    });
+
+    ipcMain.handle('media:removeTranscodeCaches', async (_event, ids: string[]) => {
+        assertTrustedIpcSender(_event);
+        if (!Array.isArray(ids) || ids.some((id) => !isValidMediaId(id))) {
+            throw new Error('无效的视频 ID');
+        }
+        await Promise.all([...new Set(ids)].map((id) => removeTranscodeCache(id)));
     });
 }
 

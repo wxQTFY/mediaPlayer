@@ -5,7 +5,7 @@ import { localStore } from '@renderer/api/media';
 import { openLocalFile } from '@renderer/api/media';
 import router  from '@renderer/router/index'
 import { type VideoItem } from '@common/types';
-import { localMediaUrl, transCodeUrl } from '@renderer/api/api';
+import { localMediaUrl, removeTranscodeCaches, transCodeUrl } from '@renderer/api/api';
 
 export const usePlayerStore = defineStore('player', {
   state: () => ({
@@ -237,10 +237,15 @@ export const usePlayerStore = defineStore('player', {
     },
 
     // 从播放列表中删除指定视频（根据ID）
-    removeVideoById(id: string) {
+    async removeVideoById(id: string) {
       const index = this.videoList.findIndex(v => v.id === id)
         //如果删除的视频正在播放，先清空当前播放状态
       if(index !== -1){
+        try {
+          await removeTranscodeCaches([id])
+        } catch (error) {
+          console.error('删除转码缓存失败:', error)
+        }
         // console.log('删除视频id:', id);
         // console.log('当前播放视频id:', this.currentVideo.currentPlayId);
         if(this.currentVideo?.id === id){
@@ -253,7 +258,13 @@ export const usePlayerStore = defineStore('player', {
       }
     },
     // 清空播放列表
-    deleteAllVideos() {
+    async deleteAllVideos() {
+      const ids = this.videoList.map(video => video.id)
+      try {
+        await removeTranscodeCaches(ids)
+      } catch (error) {
+        console.error('清空转码缓存失败:', error)
+      }
       this.videoList = []
       this.clearPlay()
       this.updateToDdisk()

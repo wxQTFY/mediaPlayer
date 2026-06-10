@@ -17,7 +17,9 @@ const api = {
     prepareFile: (id: string): Promise<{ url: string }> =>
       ipcRenderer.invoke('media:prepareFile', id),
     prepareStream: (id: string, duration: number): Promise<{ url: string }> =>
-      ipcRenderer.invoke('media:prepareStream', id, duration)
+      ipcRenderer.invoke('media:prepareStream', id, duration),
+    removeTranscodeCaches: (ids: string[]): Promise<void> =>
+      ipcRenderer.invoke('media:removeTranscodeCaches', ids)
   },
   store: {
     getVideoList: (): Promise<VideoItem[]> => ipcRenderer.invoke('store:get'),

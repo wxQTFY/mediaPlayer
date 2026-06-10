@@ -13,7 +13,7 @@ import { CONFIG_DIR } from '../../config/config';
 
 import { 
     activeTasks, stopTranscode, clearTimer, 
-    currentActiveId, setCurrentId 
+    clearCacheRemovalRequest, currentActiveId, isCacheRemovalRequested, setCurrentId
 } from './transCodeManage';
 
 ffmpeg.setFfmpegPath(ffmpegPath!); // 设置 FFprobe 路径
@@ -28,6 +28,7 @@ export const hlsTranscode = async (realPath: string,id:string,duration: number):
     const pendingTask = pendingTasks.get(id);
     if (pendingTask) return pendingTask;
 
+    clearCacheRemovalRequest(id);
     const task = prepareHlsTranscode(realPath, id, duration);
     pendingTasks.set(id, task);
     try {
@@ -63,7 +64,7 @@ const prepareHlsTranscode = async (realPath: string,id:string,duration: number):
     const { bestEncoder } = await encoderSelect();
     return startTranscode(realPath, id, duration, outputDir, m3u8Path, bestEncoder)
         .catch(async (error) => {
-            if (bestEncoder === 'libx264') throw error
+            if (bestEncoder === 'libx264' || isCacheRemovalRequested(id)) throw error
             console.warn(`[FFmpeg] ${bestEncoder} 不可用，回退到 CPU 编码`)
             stopTranscode(id)
             await startTranscode(realPath, id, duration, outputDir, m3u8Path, 'libx264')
@@ -147,5 +148,4 @@ function waitForM3u8(filePath: string, timeout = 15000): Promise<void> {
         }, 500);
     });
 }
-
 

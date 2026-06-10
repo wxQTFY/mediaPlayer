@@ -15,6 +15,7 @@ declare global {
         openFiles: (currentList: VideoItem[]) => Promise<VideoItem[]>
         prepareFile: (id: string) => Promise<{ url: string }>
         prepareStream: (id: string, duration: number) => Promise<{ url: string }>
+        removeTranscodeCaches: (ids: string[]) => Promise<void>
       }
       store: {
         getVideoList: () => Promise<VideoItem[]>

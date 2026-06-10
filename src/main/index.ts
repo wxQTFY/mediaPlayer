@@ -8,7 +8,11 @@ import {
   startMediaServer,
   stopMediaServer
 } from './controller/server/server'
-import { stopAllTranscodes } from './controller/transCodeManage/transCodeManage'
+import {
+  startTranscodeCacheCleanup,
+  stopAllTranscodes,
+  stopTranscodeCacheCleanup
+} from './controller/transCodeManage/transCodeManage'
 
 // import { WindowController } from './controller/Window/windowController'
 
@@ -113,6 +117,7 @@ app.whenReady().then(async () => {
   fileDialogController() // 初始化文件对话框控制器，设置相关监听
   registerMediaServerIpc()
   await startMediaServer()
+  startTranscodeCacheCleanup()
   createWindow()
 
   app.on('activate', function () {
@@ -132,6 +137,7 @@ app.on('window-all-closed', () => {
 })
 
 app.on('before-quit', () => {
+  stopTranscodeCacheCleanup()
   stopAllTranscodes()
   stopMediaServer()
 })
