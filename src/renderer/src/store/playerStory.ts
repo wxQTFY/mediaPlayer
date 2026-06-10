@@ -140,7 +140,18 @@ export const usePlayerStore = defineStore('player', {
     addToVideoList(items:VideoItem[]) {
       // const newItems = this.parsePathToVideoItem(path,type)
       // console.log('添加视频:', items);
-      //1. 去重并添加到列表顶部
+      //1. 使用重新探测成功的结果覆盖同路径的历史失败条目
+      let hasUpdatedItem = false
+      items.forEach(item => {
+        const failedItemIndex = this.videoList.findIndex(
+          video => video.realPath === item.realPath && !video.success
+        )
+        if (failedItemIndex !== -1 && item.success) {
+          this.videoList.splice(failedItemIndex, 1, { ...item, isNew: true })
+          hasUpdatedItem = true
+        }
+      })
+      //2. 去重并添加到列表顶部
       const existingPaths = new Set(this.videoList.map(v => v.realPath))
       const uniqueNewItems = items
         .filter(v => !existingPaths.has(v.realPath))
@@ -150,6 +161,8 @@ export const usePlayerStore = defineStore('player', {
           }))
       if (uniqueNewItems.length > 0) {
         this.videoList.unshift(...uniqueNewItems)
+      }
+      if (uniqueNewItems.length > 0 || hasUpdatedItem) {
         // console.log('更新播放列表:', this.videoList);
         this.updateToDdisk()
       }

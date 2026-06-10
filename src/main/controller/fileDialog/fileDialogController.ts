@@ -16,6 +16,7 @@ import { assertTrustedIpcSender } from '../../tools/ipcSecurity';
 
 const VIDEO_EXTS = ['.mp4', '.mkv', '.avi', '.flv', '.mov', '.wmv','.rmvb','.mpd','.m3u8','.m4v','.webm']
 const TRANSCODE_EXTS = ['.avi','.mov', '.wmv','.rmvb','.m4v']
+const DIRECT_PLAYBACK_FALLBACK_EXTS = ['.webm']
 // const HOST = serverConfig.host
 // const PORT = serverConfig.port
 
@@ -64,17 +65,26 @@ const mapAndFormatFfmpegResult = async (filePaths:string[], currentList: VideoIt
         // 1. 使用不可预测 ID，避免通过已知本地路径推测 HLS 缓存地址
         const mediaId = crypto.randomUUID()
         // 2. 查重判定
-        const existedVideo = currentList.find(v => v.realPath === filePath);
+        const existedVideo = currentList.find(v => v.realPath === filePath && v.success);
         if(existedVideo){
             // console.log('existedVideo',existedVideo)
             return existedVideo;
         }
+        const ext = path.extname(filePath).toLowerCase(); // 获取文件扩展名并转换为小写
         try{
             // let playerUrl:string;
             // 3. 只有新视频才进行耗时的元数据分析
             let playerUrl:string;
-            const metadata = await analyzeSingleVideo(filePath);
-            const ext = path.extname(filePath).toLowerCase(); // 获取文件扩展名并转换为小写
+            let metadata: NonNullable<VideoItem['meta']>;
+            try {
+                metadata = await analyzeSingleVideo(filePath);
+            } catch (error) {
+                // Chromium can play WebM directly even when ffprobe cannot read all of its metadata.
+                // Keep the file playable and let the video element report a real decode error if needed.
+                if (!DIRECT_PLAYBACK_FALLBACK_EXTS.includes(ext)) throw error;
+                console.warn('WebM 元数据探测失败，将尝试直接播放:', filePath, error);
+                metadata = { duration: 0 };
+            }
             if(TRANSCODE_EXTS.includes(ext)){
                 strategy = 'stream';
                 playerUrl = formatPath(filePath, strategy)
@@ -97,7 +107,8 @@ const mapAndFormatFfmpegResult = async (filePaths:string[], currentList: VideoIt
                     ...metadata
                 }
              }
-        }catch{
+        }catch(error){
+           console.error('视频文件导入失败:', filePath, error);
 
            return {
                 id: mediaId,

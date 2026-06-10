@@ -2,15 +2,45 @@
 //  import flvjs from 'flv.js';
 //  import * as dashjs from 'dashjs';
 import type Artplayer from 'artplayer'
+import type { MediaPlayerClass, MediaType, Representation } from 'dashjs'
 
 interface Destroyable {
   destroy: () => void
+}
+
+type DashControlCompatibility = MediaPlayerClass & {
+  getBitrateInfoListFor?: (type: MediaType) => Array<Representation & { qualityIndex: number }>
+  getQualityFor?: (type: MediaType) => number
+  setQualityFor?: (type: MediaType, qualityIndex: number) => void
 }
 
 type PlayerAdapter = Artplayer & {
   hls?: Destroyable
   flv?: Destroyable
   dash?: Destroyable
+}
+
+const addDashControlCompatibility = (dash: DashControlCompatibility): void => {
+  // artplayer-plugin-dash-control still uses the dash.js 4 quality API,
+  // which was replaced by representation APIs in dash.js 5.
+  dash.getBitrateInfoListFor = (type) =>
+    dash.getRepresentationsByType(type).map((representation, qualityIndex) => ({
+      ...representation,
+      qualityIndex
+    }))
+
+  dash.getQualityFor = (type) => {
+    const current = dash.getCurrentRepresentationForType(type)
+    if (!current) return 0
+    const currentIndex = dash
+      .getRepresentationsByType(type)
+      .findIndex((representation) => representation.id === current.id)
+    return currentIndex >= 0 ? currentIndex : 0
+  }
+
+  dash.setQualityFor = (type, qualityIndex) => {
+    dash.setRepresentationForTypeByIndex(type, qualityIndex, true)
+  }
 }
 
  export const playM3u8 = async (video: HTMLVideoElement, url: string,art: Artplayer): Promise<void> => {
@@ -65,6 +95,7 @@ export const playMpd = async (video: HTMLVideoElement, url: string, art: Artplay
     if (player.dash)
       player.dash.destroy()
       const dash = dashjs.MediaPlayer().create()
+      addDashControlCompatibility(dash)
       dash.initialize(video, url, art.option.autoplay)
       player.dash = dash
       player.on('destroy', () => dash.destroy())
