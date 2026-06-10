@@ -104,7 +104,7 @@ const mapAndFormatFfmpegResult = async (filePaths:string[], currentList: VideoIt
                 console.warn('WebM 元数据探测失败，将尝试直接播放:', filePath, error);
                 metadata = { duration: 0 };
             }
-            strategy = getLocalPlaybackStrategy(filePath, metadata.vCodec, metadata.duration)
+            strategy = getLocalPlaybackStrategy(filePath, metadata.vCodec)
             const playerUrl = formatPath(filePath, strategy)
             authorizeMedia(mediaId, filePath)
             return {

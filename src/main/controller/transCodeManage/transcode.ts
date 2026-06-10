@@ -100,10 +100,11 @@ const startTranscode = (
     ]   
     ffmpegCommand
         .videoCodec(encoder)
-        .duration(duration)
         .audioCodec('aac')
         .addOptions(globalOptions)
-        .outputOptions(outOptions) 
+        .outputOptions(outOptions)
+    if (duration > 0) ffmpegCommand.duration(duration)
+    ffmpegCommand
         .on('start', (cmd) => {
             console.log('HLS 转码启动:', cmd)
             // 启动后开始轮询 index.m3u8
@@ -148,4 +149,3 @@ function waitForM3u8(filePath: string, timeout = 15000): Promise<void> {
         }, 500);
     });
 }
-

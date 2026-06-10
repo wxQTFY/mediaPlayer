@@ -66,7 +66,7 @@ export const registerMediaServerIpc = (): void => {
     if (!isValidMediaId(id)) throw new Error('无效的视频 ID');
     const realPath = getAuthorizedMediaPath(id);
     const parsedDuration = Number(duration);
-    if (!realPath || !Number.isFinite(parsedDuration) || parsedDuration <= 0 || parsedDuration > 86400) {
+    if (!realPath || !Number.isFinite(parsedDuration) || parsedDuration < 0 || parsedDuration > 86400) {
         throw new Error('无效的视频参数');
     }
     try{

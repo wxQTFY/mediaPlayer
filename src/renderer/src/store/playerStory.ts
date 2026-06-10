@@ -197,8 +197,7 @@ export const usePlayerStore = defineStore('player', {
       if (videoToPlay.realPath && !/^https?:\/\//i.test(videoToPlay.realPath)) {
         strategy = getLocalPlaybackStrategy(
           videoToPlay.realPath,
-          videoToPlay.meta?.vCodec,
-          videoToPlay.meta?.duration
+          videoToPlay.meta?.vCodec
         )
         videoToPlay.playback!.strategy = strategy
       }
