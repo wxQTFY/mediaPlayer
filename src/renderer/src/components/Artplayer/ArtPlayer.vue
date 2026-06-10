@@ -1,6 +1,7 @@
 <script setup lang="ts">
   import { ref,onMounted,onUnmounted } from 'vue'
   import Artplayer from 'artplayer'
+  import type { Option } from 'artplayer'
   import { defaultPlayerConf } from '@renderer/config/playerConf';
   // import videoUrl from '@renderer/assets/111.mp4'
   import { playM3u8, playFlv,playMpd} from './playLibraries'
@@ -20,13 +21,39 @@
     (e: 'get-duration', duration: number): void;
   }>();
   // console.log('ArtPlayer组件接收到的URL:', props.url);
-  // let art: Artplayer | null = null
   const artRef = ref<HTMLDivElement | null>(null)
-  // var player = shallowRef<Artplayer | null>(null)
-  var art: Artplayer
+  let art: Artplayer | undefined
+
+  const isMediaType = (url: string, extension: string): boolean => {
+    return new RegExp(`\\.${extension}(?:[?#]|$)`, 'i').test(url)
+  }
+
   onMounted(() => {
+    if (!artRef.value) return
+
+    const plugins: NonNullable<Option['plugins']> = []
+    if (isMediaType(props.url, 'm3u8')) {
+      plugins.push(artplayerPluginHlsControl({
+        quality: {
+          control: true,
+          setting: true,
+          title: '画质',
+          auto: '自动',
+        }
+      }))
+    } else if (isMediaType(props.url, 'mpd')) {
+      plugins.push(artplayerPluginDashControl({
+        quality: {
+          control: true,
+          setting: true,
+          title: '画质',
+          auto: '自动',
+        }
+      }))
+    }
+
     art = new Artplayer({
-      container: artRef.value!, // 传入 DOM 元素或选择器
+      container: artRef.value, // 传入 DOM 元素或选择器
       url: props.url, // 视频 URL
       // type: props.url.includes('.mpd') ? 'mpd' : 'm3u8', // 视频类型
    
@@ -35,33 +62,17 @@
         m3u8: playM3u8,
         flv: playFlv
       },
-         plugins: [
-          props.url.includes('.m3u8') ?  artplayerPluginHlsControl({
-             quality: {
-              control: true,
-              setting: true,
-              title: '画质',
-              auto: '自动',
-            }
-          }): artplayerPluginDashControl({
-            quality: {
-              control: true,
-              setting: true,
-              title: '画质',
-              auto: '自动',
-            }
-          })
-       ],
+      plugins,
       //  theme: '#29ADFF', 
       ...defaultPlayerConf
     })
     //视频快进
     art.on('ready', () => {
+      if (!art) return
       art.forward=5; // 设置快进时间为 5 秒
       // console.log('播放器已准备好，当前视频URL:', props.url);
       //  console.info(art.duration);
-       console.info(art.plugins.myPlugin)
-      if(art && art.duration !== Infinity && art.duration > 0){
+      if(art.duration !== Infinity && art.duration > 0){
         emit('get-duration', art.duration);
       }
     });
@@ -71,12 +82,9 @@
     });
   })
   onUnmounted(() => {
-  if (art) {
-    // console.log('正在销毁播放器实例，释放资源...');
-    art.destroy(true);
-    // console.log('释放资源完毕');
-  }
-});
+    art?.destroy(true);
+    art = undefined;
+  });
  
 </script>
 
