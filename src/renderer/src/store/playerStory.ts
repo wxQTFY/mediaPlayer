@@ -5,6 +5,7 @@ import { importDroppedFiles, localStore, openLocalFile } from '@renderer/api/med
 import router  from '@renderer/router/index'
 import { type VideoItem } from '@common/types';
 import { localMediaUrl, removeTranscodeCaches, transCodeUrl } from '@renderer/api/api';
+import { getLocalPlaybackStrategy } from '@common/playbackStrategy';
 
 export const usePlayerStore = defineStore('player', {
   state: () => ({
@@ -193,10 +194,12 @@ export const usePlayerStore = defineStore('player', {
       }
       const videoToPlay = JSON.parse(JSON.stringify(video)) as VideoItem;
       let { strategy } = videoToPlay.playback!
-      const isWebm = /\.webm$/i.test(videoToPlay.realPath ?? '')
-      // 兼容历史播放列表：WebM 容器内可能包含 Chromium 无法直接解码的编码。
-      if (isWebm && (videoToPlay.meta?.duration ?? 0) > 0) {
-        strategy = 'stream'
+      if (videoToPlay.realPath && !/^https?:\/\//i.test(videoToPlay.realPath)) {
+        strategy = getLocalPlaybackStrategy(
+          videoToPlay.realPath,
+          videoToPlay.meta?.vCodec,
+          videoToPlay.meta?.duration
+        )
         videoToPlay.playback!.strategy = strategy
       }
 

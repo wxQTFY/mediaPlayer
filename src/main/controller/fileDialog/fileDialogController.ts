@@ -14,10 +14,9 @@ import crypto from 'crypto';
 import { pathToFileURL } from 'url';
 import { authorizeMedia } from '../../tools/mediaAccess';
 import { assertTrustedIpcSender } from '../../tools/ipcSecurity';
+import { getLocalPlaybackStrategy, VIDEO_EXTS } from '../../../common/playbackStrategy';
 
-const VIDEO_EXTS = ['.mp4', '.mkv', '.avi', '.flv', '.mov', '.wmv','.rmvb','.mpd','.m3u8','.m4v','.webm']
-const TRANSCODE_EXTS = ['.avi','.mov', '.wmv','.rmvb','.m4v','.webm']
-const DIRECT_PLAYBACK_FALLBACK_EXTS = ['.webm']
+const DIRECT_PLAYBACK_FALLBACK_EXTS = ['.webm', '.ogg', '.ogv']
 // const HOST = serverConfig.host
 // const PORT = serverConfig.port
 
@@ -95,7 +94,6 @@ const mapAndFormatFfmpegResult = async (filePaths:string[], currentList: VideoIt
         try{
             // let playerUrl:string;
             // 3. 只有新视频才进行耗时的元数据分析
-            let playerUrl:string;
             let metadata: NonNullable<VideoItem['meta']>;
             try {
                 metadata = await analyzeSingleVideo(filePath);
@@ -106,13 +104,8 @@ const mapAndFormatFfmpegResult = async (filePaths:string[], currentList: VideoIt
                 console.warn('WebM 元数据探测失败，将尝试直接播放:', filePath, error);
                 metadata = { duration: 0 };
             }
-            if(TRANSCODE_EXTS.includes(ext) && metadata.duration > 0){
-                strategy = 'stream';
-                playerUrl = formatPath(filePath, strategy)
-            }else {
-                strategy = 'direct';
-                playerUrl = formatPath(filePath, strategy)
-            }
+            strategy = getLocalPlaybackStrategy(filePath, metadata.vCodec, metadata.duration)
+            const playerUrl = formatPath(filePath, strategy)
             authorizeMedia(mediaId, filePath)
             return {
                 id: mediaId,
