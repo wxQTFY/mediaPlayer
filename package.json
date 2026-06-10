@@ -31,7 +31,7 @@
     "artplayer-plugin-hls-control": "^1.1.0",
     "axios": "^1.16.0",
     "dashjs": "^5.1.1",
-    "electron-store": "^10.1.0",
+    "electron-store": "^11.0.2",
     "electron-updater": "^6.3.9",
     "electron-win-state": "^1.1.22",
     "element-plus": "^2.13.3",
