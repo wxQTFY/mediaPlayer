@@ -5,7 +5,8 @@ import {
   getAuthorizedMediaPath,
   isAuthorizedMediaItem,
   isAuthorizedMediaPath,
-  isValidMediaId
+  isValidMediaId,
+  normalizeMediaPath
 } from '../src/main/tools/mediaAccess'
 
 describe('media access authorization', () => {
@@ -36,5 +37,15 @@ describe('media access authorization', () => {
 
     expect(getAuthorizedMediaPath('../outside')).toBeUndefined()
     expect(getAuthorizedMediaPath('947b49da-9c0c-42b1-9e0e-c343c6505bb1')).toBeUndefined()
+  })
+
+  it('matches authorized Windows paths without drive-letter case sensitivity', () => {
+    const windowsId = 'd786f7fb-8e1e-4155-886c-5da316a7de26'
+    authorizeMedia(windowsId, 'C:\\Users\\wangxin\\Desktop\\视频示例\\video.mp4')
+
+    expect(normalizeMediaPath('c:/Users/wangxin/Desktop/视频示例/video.mp4'))
+      .toBe('c:\\Users\\wangxin\\Desktop\\视频示例\\video.mp4')
+    expect(isAuthorizedMediaPath('c:/Users/wangxin/Desktop/视频示例/video.mp4')).toBe(true)
+    expect(isAuthorizedMediaItem(windowsId, 'c:/Users/wangxin/Desktop/视频示例/video.mp4')).toBe(true)
   })
 })

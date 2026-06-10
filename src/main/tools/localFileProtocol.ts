@@ -1,4 +1,5 @@
 import { protocol,net } from 'electron'
+import path from 'path'
 import { pathToFileURL } from 'url'
 import { isAuthorizedMediaPath } from './mediaAccess'
 
@@ -24,18 +25,25 @@ export function registerLocalFileProtocol(): void {
  * 2. 注册协议处理器 (在 app ready 之后调用)
  */
 export function registerLocalFileProtocolHandler(): void {
-    // 移除协议头并处理路径
-    // 注意：request.url 可能会被编码，需要 decode
     protocol.handle(LOCAL_FILE_PROTOCOL, (request) => {
         try {
             if (request.method !== 'GET') {
                 return new Response('Method Not Allowed', { status: 405 })
             }
             const url = new URL(request.url)
-            let filePath = decodeURIComponent(`${url.host}${url.pathname}`)
-            if(process.platform !== 'win32') filePath = `/${filePath.replace(/^\/+/, '')}`
-            if(process.platform === 'win32' && /^[a-zA-Z]\/.*/.test(filePath)){
-                filePath = filePath.replace(/^[a-zA-Z]\/(.*)/, (match, p1) => `${match[0]}:/${p1}`)
+            if (url.search || url.hash) return new Response('Bad Request', { status: 400 })
+
+            const decodedPath = decodeURIComponent(url.pathname)
+            let filePath: string
+            if (process.platform === 'win32') {
+                // 兼容旧格式 local-file://c/path 和标准格式 local-file:///C:/path。
+                const windowsPath = /^[a-zA-Z]$/.test(url.host)
+                    ? `${url.host}:${decodedPath}`
+                    : decodedPath.replace(/^\/(?=[a-zA-Z]:\/)/, '')
+                filePath = path.win32.normalize(windowsPath)
+            } else {
+                if (url.host) return new Response('Bad Request', { status: 400 })
+                filePath = path.posix.normalize(decodedPath)
             }
             if (!isAuthorizedMediaPath(filePath)) {
                 return new Response('Forbidden', { status: 403 })

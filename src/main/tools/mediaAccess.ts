@@ -5,9 +5,20 @@ const authorizedMedia = new Map<string, string>()
 
 export const isValidMediaId = (id: string): boolean => MEDIA_ID_PATTERN.test(id)
 
+const isWindowsPath = (filePath: string): boolean => /^[a-zA-Z]:[\\/]/.test(filePath)
+
+export const normalizeMediaPath = (filePath: string): string => {
+  return isWindowsPath(filePath) ? path.win32.normalize(filePath) : path.normalize(filePath)
+}
+
+const canonicalizeMediaPath = (filePath: string): string => {
+  const normalizedPath = normalizeMediaPath(filePath)
+  return isWindowsPath(normalizedPath) ? normalizedPath.toLowerCase() : normalizedPath
+}
+
 export const authorizeMedia = (id: string, filePath: string): void => {
-  if (!isValidMediaId(id) || !path.isAbsolute(filePath)) return
-  authorizedMedia.set(id, path.normalize(filePath))
+  if (!isValidMediaId(id) || (!path.isAbsolute(filePath) && !path.win32.isAbsolute(filePath))) return
+  authorizedMedia.set(id, normalizeMediaPath(filePath))
 }
 
 export const authorizeMediaList = (
@@ -26,11 +37,15 @@ export const getAuthorizedMediaPath = (id: string): string | undefined => {
 }
 
 export const isAuthorizedMediaPath = (filePath: string): boolean => {
-  const normalizedPath = path.normalize(filePath)
-  return [...authorizedMedia.values()].some((authorizedPath) => authorizedPath === normalizedPath)
+  const canonicalPath = canonicalizeMediaPath(filePath)
+  return [...authorizedMedia.values()].some(
+    (authorizedPath) => canonicalizeMediaPath(authorizedPath) === canonicalPath
+  )
 }
 
 export const isAuthorizedMediaItem = (id: unknown, filePath: unknown): boolean => {
   if (typeof id !== 'string' || typeof filePath !== 'string') return false
-  return getAuthorizedMediaPath(id) === path.normalize(filePath)
+  const authorizedPath = getAuthorizedMediaPath(id)
+  return authorizedPath !== undefined &&
+    canonicalizeMediaPath(authorizedPath) === canonicalizeMediaPath(filePath)
 }

@@ -10,6 +10,7 @@ import { type VideoItem } from '../../../common/types';
 
 // import { CONFIG_CONST } from "../../config/config";
 import crypto from 'crypto';
+import { pathToFileURL } from 'url';
 import { authorizeMedia } from '../../tools/mediaAccess';
 import { assertTrustedIpcSender } from '../../tools/ipcSecurity';
 
@@ -49,21 +50,10 @@ export const fileDialogController = (): void => {
  */
 const formatPath = (absolutePath: string, strategy:string,protocol: string = 'local-file'): string => {
     if (!absolutePath) return '';
-    let url:string;
     if(strategy === 'direct'){
-         // 1. 将所有反斜杠 \ 转换为正斜杠 /
-        // 使用正则 /\\/g 确保全局替换  
-        let normalizedPath = absolutePath.replace(/\\/g, '/');
-        // 2. 确保路径开头没有重复的斜杠（如果是从某些库获取的路径可能带盘符前缀）
-        if (process.platform === 'win32') {
-            normalizedPath = normalizedPath.startsWith('/') ? normalizedPath.substring(1) : normalizedPath;
-        }
-        //拼接协议头
-        url = `${protocol}://${normalizedPath}`;
-    }else{
-         url = absolutePath;
+        return pathToFileURL(absolutePath).toString().replace(/^file:/, `${protocol}:`);
     }
-   return url;
+    return absolutePath;
 }  
 
 //遍历所有选择的文件路径，根据探测结果返回加工后的最终格式
