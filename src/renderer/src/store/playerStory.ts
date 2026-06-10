@@ -192,7 +192,13 @@ export const usePlayerStore = defineStore('player', {
         return
       }
       const videoToPlay = JSON.parse(JSON.stringify(video)) as VideoItem;
-      const { strategy } = videoToPlay.playback!
+      let { strategy } = videoToPlay.playback!
+      const isWebm = /\.webm$/i.test(videoToPlay.realPath ?? '')
+      // 兼容历史播放列表：WebM 容器内可能包含 Chromium 无法直接解码的编码。
+      if (isWebm && (videoToPlay.meta?.duration ?? 0) > 0) {
+        strategy = 'stream'
+        videoToPlay.playback!.strategy = strategy
+      }
 
       // --- 核心优化：分流逻辑 ---
       // 1. 如果是原生支持的 MP4/WebM，尝试用 Mediabunny 预处理（如提取关键帧或检查坏帧）

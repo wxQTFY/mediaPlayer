@@ -78,7 +78,7 @@
     });
     //  console.log('当前播放的url:', props.url);
     art.on('video:error', (err) => {
-      console.error('视频渲染失败，请检查编码格式 (H.265?) 或路径', err);
+      console.error('视频渲染失败，请检查媒体编码格式或路径', err);
     });
   })
   onUnmounted(() => {

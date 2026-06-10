@@ -16,7 +16,7 @@ import { authorizeMedia } from '../../tools/mediaAccess';
 import { assertTrustedIpcSender } from '../../tools/ipcSecurity';
 
 const VIDEO_EXTS = ['.mp4', '.mkv', '.avi', '.flv', '.mov', '.wmv','.rmvb','.mpd','.m3u8','.m4v','.webm']
-const TRANSCODE_EXTS = ['.avi','.mov', '.wmv','.rmvb','.m4v']
+const TRANSCODE_EXTS = ['.avi','.mov', '.wmv','.rmvb','.m4v','.webm']
 const DIRECT_PLAYBACK_FALLBACK_EXTS = ['.webm']
 // const HOST = serverConfig.host
 // const PORT = serverConfig.port
@@ -106,7 +106,7 @@ const mapAndFormatFfmpegResult = async (filePaths:string[], currentList: VideoIt
                 console.warn('WebM 元数据探测失败，将尝试直接播放:', filePath, error);
                 metadata = { duration: 0 };
             }
-            if(TRANSCODE_EXTS.includes(ext)){
+            if(TRANSCODE_EXTS.includes(ext) && metadata.duration > 0){
                 strategy = 'stream';
                 playerUrl = formatPath(filePath, strategy)
             }else {
