@@ -5,7 +5,7 @@ import { localStore } from '@renderer/api/media';
 import { openLocalFile } from '@renderer/api/media';
 import router  from '@renderer/router/index'
 import { type VideoItem } from '@common/types';
-import { transCodeUrl } from '@renderer/api/api';
+import { localMediaUrl, transCodeUrl } from '@renderer/api/api';
 
 export const usePlayerStore = defineStore('player', {
   state: () => ({
@@ -175,6 +175,10 @@ export const usePlayerStore = defineStore('player', {
         console.log('转码后的视频地址',url)
         
         videoToPlay.videoPath = url
+      } else if (/\.flv$/i.test(videoToPlay.realPath ?? '')) {
+        // flv.js 使用 fetch 加载资源，必须通过受控的回环 HTTP 地址读取本地文件。
+        const res = await localMediaUrl(videoToPlay.id)
+        videoToPlay.videoPath = res.url
       }
       //2. 更新当前播放视频
 

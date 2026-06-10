@@ -38,9 +38,29 @@ app.get('/temp_hls/:id/:file', (req, res) => {
     res.sendFile(path.join(CONFIG_DIR.TEMP_HLS_DIR, id, file));
 });
 
+app.get('/media/:id/:file', (req, res) => {
+    const { id, file } = req.params;
+    const realPath = getAuthorizedMediaPath(id);
+    if (!isValidMediaId(id) || !realPath || path.basename(realPath) !== file) {
+        res.sendStatus(403);
+        return;
+    }
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+    res.sendFile(realPath);
+});
+
 // let ffmpegCommand: ffmpeg.FfmpegCommand | null = null;
 
 export const registerMediaServerIpc = (): void => {
+    ipcMain.handle('media:prepareFile', (_event, id: string) => {
+        assertTrustedIpcSender(_event);
+        if (!isValidMediaId(id)) throw new Error('无效的视频 ID');
+        const realPath = getAuthorizedMediaPath(id);
+        if (!realPath || !serverUrl) throw new Error('媒体文件尚未授权');
+        return { url: `${serverUrl}/media/${id}/${encodeURIComponent(path.basename(realPath))}` };
+    });
+
     ipcMain.handle('media:prepareStream', async (_event, id: string, duration: number) => {
     assertTrustedIpcSender(_event);
     if (!isValidMediaId(id)) throw new Error('无效的视频 ID');

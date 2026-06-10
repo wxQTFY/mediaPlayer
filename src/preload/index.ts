@@ -14,6 +14,8 @@ const api = {
   media: {
     openFiles: (currentList: VideoItem[]): Promise<VideoItem[]> =>
       ipcRenderer.invoke('dialog:openFile', currentList),
+    prepareFile: (id: string): Promise<{ url: string }> =>
+      ipcRenderer.invoke('media:prepareFile', id),
     prepareStream: (id: string, duration: number): Promise<{ url: string }> =>
       ipcRenderer.invoke('media:prepareStream', id, duration)
   },

@@ -13,6 +13,7 @@ declare global {
       }
       media: {
         openFiles: (currentList: VideoItem[]) => Promise<VideoItem[]>
+        prepareFile: (id: string) => Promise<{ url: string }>
         prepareStream: (id: string, duration: number) => Promise<{ url: string }>
       }
       store: {
