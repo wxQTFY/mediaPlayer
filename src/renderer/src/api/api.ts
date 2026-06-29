@@ -14,6 +14,7 @@ export const probeVideoDownload = (
   url: string
 ): Promise<{
   downloadable: boolean
+  downloadKind?: 'file' | 'hls'
   fileName?: string
   contentLength?: number
   reason?: string

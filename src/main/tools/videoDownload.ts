@@ -4,9 +4,13 @@ import { pipeline } from 'stream/promises'
 import http from 'http'
 import https from 'https'
 import path from 'path'
+import ffmpeg from 'fluent-ffmpeg'
+import ffmpegPath from 'ffmpeg-static'
+import { resolvePackagedBinaryPath } from './mediaBinaryPath'
 
 const MAX_REDIRECTS = 5
-const PLAYLIST_EXTS = new Set(['.m3u8', '.mpd'])
+const HLS_EXT = '.m3u8'
+const DASH_EXT = '.mpd'
 const VIDEO_MIME_EXTS = new Map([
   ['video/mp4', '.mp4'],
   ['video/webm', '.webm'],
@@ -18,8 +22,11 @@ const VIDEO_MIME_EXTS = new Map([
   ['application/octet-stream', '.mp4']
 ])
 
+ffmpeg.setFfmpegPath(resolvePackagedBinaryPath(ffmpegPath!))
+
 export interface VideoDownloadProbeResult {
   downloadable: boolean
+  downloadKind?: 'file' | 'hls'
   fileName?: string
   contentLength?: number
   reason?: string
@@ -45,9 +52,17 @@ const assertDownloadableUrl = (rawUrl: string): URL => {
   return url
 }
 
-const hasPlaylistExtension = (url: URL): boolean => {
+const getUrlExtension = (url: URL): string => {
   const ext = path.extname(decodeURIComponent(url.pathname)).toLowerCase()
-  return PLAYLIST_EXTS.has(ext)
+  return ext
+}
+
+const isHlsPlaylist = (url: URL): boolean => {
+  return getUrlExtension(url) === HLS_EXT
+}
+
+const isDashPlaylist = (url: URL): boolean => {
+  return getUrlExtension(url) === DASH_EXT
 }
 
 const getHeader = (headers: http.IncomingHttpHeaders, name: string): string | undefined => {
@@ -147,6 +162,17 @@ const buildSuggestedFileName = (
   return `${baseName}${inferExtension(headers, baseName)}`
 }
 
+const forceFileExtension = (fileName: string, extension: string): string => {
+  const currentExt = path.extname(fileName)
+  const baseName = currentExt ? fileName.slice(0, -currentExt.length) : fileName
+  return `${baseName}${extension}`
+}
+
+const buildPlaylistFileName = (url: URL, fallbackName?: string): string => {
+  const baseName = sanitizeFileName(fallbackName || getFileNameFromUrl(url) || 'video')
+  return forceFileExtension(baseName, '.mp4')
+}
+
 const isVideoResponse = (headers: http.IncomingHttpHeaders, finalUrl: string): boolean => {
   const contentType = getHeader(headers, 'content-type')?.split(';')[0]?.trim().toLowerCase()
   if (contentType?.includes('mpegurl') || contentType === 'application/dash+xml') return false
@@ -157,8 +183,23 @@ const isVideoResponse = (headers: http.IncomingHttpHeaders, finalUrl: string): b
 
 export const probeVideoDownload = async (rawUrl: string): Promise<VideoDownloadProbeResult> => {
   const url = assertDownloadableUrl(rawUrl)
-  if (hasPlaylistExtension(url)) {
-    return { downloadable: false, reason: '播放列表地址不作为单文件下载' }
+  if (isHlsPlaylist(url)) {
+    let response = await requestUrl(url.toString(), 'HEAD')
+    if (response.statusCode === 405 || response.statusCode >= 500) {
+      response = await requestUrl(url.toString(), 'GET', { Range: 'bytes=0-0' })
+      response.stream.resume()
+    }
+    if (response.statusCode < 200 || response.statusCode >= 400) {
+      return { downloadable: false, reason: `服务端返回 ${response.statusCode}` }
+    }
+    return {
+      downloadable: true,
+      downloadKind: 'hls',
+      fileName: buildPlaylistFileName(new URL(response.finalUrl))
+    }
+  }
+  if (isDashPlaylist(url)) {
+    return { downloadable: false, reason: 'DASH 播放列表暂不支持下载' }
   }
 
   let response = await requestUrl(url.toString(), 'HEAD')
@@ -178,9 +219,25 @@ export const probeVideoDownload = async (rawUrl: string): Promise<VideoDownloadP
   const contentLength = Number(getHeader(response.headers, 'content-length'))
   return {
     downloadable: true,
+    downloadKind: 'file',
     fileName: buildSuggestedFileName(response.headers, response.finalUrl),
     contentLength: Number.isFinite(contentLength) ? contentLength : undefined
   }
+}
+
+const downloadHlsToFile = (rawUrl: string, filePath: string): Promise<void> => {
+  return new Promise((resolve, reject) => {
+    ffmpeg(rawUrl)
+      .inputOptions(['-user_agent', 'SanjinMediaPlayer/1.0'])
+      .outputOptions(['-c copy', '-movflags +faststart'])
+      .on('error', (error, stdout, stderr) => {
+        if (stderr) console.error('HLS 下载失败:', stderr)
+        if (stdout) console.error('HLS 下载标准输出:', stdout)
+        reject(error)
+      })
+      .on('end', () => resolve())
+      .save(filePath)
+  })
 }
 
 export const downloadVideoFromUrl = async (
@@ -194,9 +251,17 @@ export const downloadVideoFromUrl = async (
 
   const { canceled, filePath } = await dialog.showSaveDialog({
     title: '保存视频',
-    defaultPath: suggestedName || probe.fileName || 'video.mp4'
+    defaultPath:
+      probe.downloadKind === 'hls'
+        ? forceFileExtension(suggestedName || probe.fileName || 'video.mp4', '.mp4')
+        : suggestedName || probe.fileName || 'video.mp4'
   })
   if (canceled || !filePath) return { canceled: true }
+
+  if (probe.downloadKind === 'hls') {
+    await downloadHlsToFile(rawUrl, filePath)
+    return { canceled: false, filePath }
+  }
 
   const response = await requestUrl(rawUrl, 'GET')
   if (response.statusCode < 200 || response.statusCode >= 400) {
