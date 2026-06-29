@@ -28,7 +28,13 @@ declare global {
         downloadUrl: (
           url: string,
           suggestedName?: string
-        ) => Promise<{ canceled: boolean; filePath?: string }>
+        ) => Promise<{
+          canceled: boolean
+          filePath?: string
+          entryPath?: string
+          outputDir?: string
+          segmentCount?: number
+        }>
       }
       store: {
         getVideoList: () => Promise<VideoItem[]>

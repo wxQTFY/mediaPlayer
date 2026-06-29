@@ -25,6 +25,12 @@ export const probeVideoDownload = (
 export const downloadVideoUrl = (
   url: string,
   suggestedName?: string
-): Promise<{ canceled: boolean; filePath?: string }> => {
+): Promise<{
+  canceled: boolean
+  filePath?: string
+  entryPath?: string
+  outputDir?: string
+  segmentCount?: number
+}> => {
   return window.api.media.downloadUrl(url, suggestedName)
 }

@@ -35,7 +35,13 @@ const api = {
     downloadUrl: (
       url: string,
       suggestedName?: string
-    ): Promise<{ canceled: boolean; filePath?: string }> =>
+    ): Promise<{
+      canceled: boolean
+      filePath?: string
+      entryPath?: string
+      outputDir?: string
+      segmentCount?: number
+    }> =>
       ipcRenderer.invoke('media:downloadUrl', url, suggestedName)
   },
   store: {
