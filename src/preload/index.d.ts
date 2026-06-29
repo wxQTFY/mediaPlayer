@@ -18,6 +18,16 @@ declare global {
         prepareFile: (id: string) => Promise<{ url: string }>
         prepareStream: (id: string, duration: number) => Promise<{ url: string }>
         removeTranscodeCaches: (ids: string[]) => Promise<void>
+        probeDownload: (url: string) => Promise<{
+          downloadable: boolean
+          fileName?: string
+          contentLength?: number
+          reason?: string
+        }>
+        downloadUrl: (
+          url: string,
+          suggestedName?: string
+        ) => Promise<{ canceled: boolean; filePath?: string }>
       }
       store: {
         getVideoList: () => Promise<VideoItem[]>

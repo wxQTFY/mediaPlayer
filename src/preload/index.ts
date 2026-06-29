@@ -22,7 +22,20 @@ const api = {
     prepareStream: (id: string, duration: number): Promise<{ url: string }> =>
       ipcRenderer.invoke('media:prepareStream', id, duration),
     removeTranscodeCaches: (ids: string[]): Promise<void> =>
-      ipcRenderer.invoke('media:removeTranscodeCaches', ids)
+      ipcRenderer.invoke('media:removeTranscodeCaches', ids),
+    probeDownload: (
+      url: string
+    ): Promise<{
+      downloadable: boolean
+      fileName?: string
+      contentLength?: number
+      reason?: string
+    }> => ipcRenderer.invoke('media:probeDownload', url),
+    downloadUrl: (
+      url: string,
+      suggestedName?: string
+    ): Promise<{ canceled: boolean; filePath?: string }> =>
+      ipcRenderer.invoke('media:downloadUrl', url, suggestedName)
   },
   store: {
     getVideoList: (): Promise<VideoItem[]> => ipcRenderer.invoke('store:get'),

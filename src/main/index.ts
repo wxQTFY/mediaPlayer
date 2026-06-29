@@ -23,9 +23,12 @@ import { initAll } from './controller/InitManager/initManager'
 import { windowConfig } from './config/conf.json'
 import { fileDialogController } from './controller/fileDialog/fileDialogController'
 
-import { registerLocalFileProtocol, registerLocalFileProtocolHandler } from './tools/localFileProtocol'
-
-
+import {
+  registerLocalFileProtocol,
+  registerLocalFileProtocolHandler
+} from './tools/localFileProtocol'
+import { downloadVideoFromUrl, probeVideoDownload } from './tools/videoDownload'
+import { assertTrustedIpcSender } from './tools/ipcSecurity'
 
 // --- 第一步：在最顶部（ready 之前）执行 ---
 registerLocalFileProtocol() // 注册协议
@@ -46,15 +49,12 @@ function createWindow(): void {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: true,
       contextIsolation: true, //核心配置，开启上下文隔离
-      nodeIntegration: false, //核心配置，禁止在渲染进程使用 Node.js API
+      nodeIntegration: false //核心配置，禁止在渲染进程使用 Node.js API
     }
   })
 
-
-
   mainWindow.on('ready-to-show', () => {
-    
-// --- 第二步：在 ready 之后执行 ---
+    // --- 第二步：在 ready 之后执行 ---
     //registerLocalFileProtocolHandler() // 注册协议处理器
     mainWindow.show()
   })
@@ -63,12 +63,11 @@ function createWindow(): void {
   // const windowCtrl = new WindowController(mainWindow)
   // windowCtrl.init()
 
- //纯函数方式实例化托盘
+  //纯函数方式实例化托盘
   // createTray(mainWindow)
 
   //统一实例化管理器，并启动window窗口操作监听和托盘
- initAll(mainWindow)
-
+  initAll(mainWindow)
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
     try {
@@ -114,6 +113,14 @@ app.whenReady().then(async () => {
 
   // IPC test
   ipcMain.on('ping', () => console.log('pong'))
+  ipcMain.handle('media:probeDownload', async (_event, url: string) => {
+    assertTrustedIpcSender(_event)
+    return probeVideoDownload(url)
+  })
+  ipcMain.handle('media:downloadUrl', async (_event, url: string, suggestedName?: string) => {
+    assertTrustedIpcSender(_event)
+    return downloadVideoFromUrl(url, suggestedName)
+  })
   fileDialogController() // 初始化文件对话框控制器，设置相关监听
   registerMediaServerIpc()
   await startMediaServer()
